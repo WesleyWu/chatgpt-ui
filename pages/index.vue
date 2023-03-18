@@ -66,9 +66,14 @@ const fetchReply = async (message, parentMessageId) => {
         parentMessageId: parentMessageId,
         conversationId: currentConversation.value.id
       }),
-      onopen(response) {
+      async onopen(response) {
         if (response.ok && response.headers.get('content-type') === EventStreamContentType) {
           return;
+        }
+        if (response.ok) {
+          // const data = await response.json()
+          // console.log(data);
+          return
         }
         throw new Error(`Failed to send message. HTTP ${response.status} - ${response.statusText}`);
       },
@@ -93,7 +98,7 @@ const fetchReply = async (message, parentMessageId) => {
         if (event === 'done') {
           if (currentConversation.value.id === null) {
             currentConversation.value.id = data.conversationId
-            genTitle(currentConversation.value.id)
+            await genTitle(currentConversation.value.id)
           }
           currentConversation.value.messages[currentConversation.value.messages.length - 1].id = data.messageId
           abortFetch()

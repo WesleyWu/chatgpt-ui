@@ -14,7 +14,7 @@ const setTheme = (theme) => {
   colorMode.preference = theme
 }
 const feedback = () => {
-  window.open('https://github.com/WongSaang/chatgpt-ui/issues', '_blank')
+  // window.open('https://github.com/WongSaang/chatgpt-ui/issues', '_blank')
 }
 
 const { locale, locales, setLocale } = useI18n()
@@ -253,12 +253,12 @@ onNuxtReady(async () => {
 
             <SettingsLanguages/>
 
-            <v-list-item
-                rounded="xl"
-                prepend-icon="help_outline"
-                :title="$t('feedback')"
-                @click="feedback"
-            ></v-list-item>
+<!--            <v-list-item-->
+<!--                rounded="xl"-->
+<!--                prepend-icon="help_outline"-->
+<!--                :title="$t('feedback')"-->
+<!--                @click="feedback"-->
+<!--            ></v-list-item>-->
           </v-list>
         </div>
       </template>
