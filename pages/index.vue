@@ -52,6 +52,44 @@ const abortFetch = () => {
 const fetchReply = async (message, parentMessageId) => {
   ctrl = new AbortController()
   try {
+    const response = await fetch('/api/conversation/', {
+      method: 'POST',
+      headers: {
+        'accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: currentModel.value,
+        openaiApiKey: openaiApiKey.value,
+        message: message,
+        parentMessageId: parentMessageId,
+        conversationId: currentConversation.value.id
+      }),
+    })
+    const data = await response.json()
+    console.log(data)
+
+    if (currentConversation.value.id === null) {
+      currentConversation.value.id = data.conversationId
+      await genTitle(currentConversation.value.id)
+    }
+    currentConversation.value.messages[currentConversation.value.messages.length - 1].id = data.messageId
+
+
+    messageQueue.push(data.content)
+    processMessageQueue()
+    abortFetch()
+    scrollChatWindow()
+  } catch (err) {
+    console.log(err)
+    abortFetch()
+    showSnackbar(err.message)
+  }
+}
+
+const fetchReplyEventSource = async (message, parentMessageId) => {
+  ctrl = new AbortController()
+  try {
     await fetchEventSource('/api/conversation/', {
       signal: ctrl.signal,
       method: 'POST',
@@ -135,6 +173,7 @@ const send = (message) => {
   }
   currentConversation.value.messages.push({parentMessageId: parentMessageId, message: message})
   fetchReply(message, parentMessageId)
+  // fetchReplyEventSource(message, parentMessageId)
   scrollChatWindow()
 }
 const stop = () => {
