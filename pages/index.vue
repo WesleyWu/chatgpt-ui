@@ -6,6 +6,7 @@ definePageMeta({
 })
 import {EventStreamContentType, fetchEventSource} from '@microsoft/fetch-event-source'
 import { nextTick } from 'vue'
+import MessageActions from "~/components/MessageActions.vue";
 
 const { $i18n, $auth } = useNuxtApp()
 const runtimeConfig = useRuntimeConfig()
@@ -51,9 +52,16 @@ const abortFetch = () => {
 }
 const fetchReply = async (message, parentMessageId) => {
   ctrl = new AbortController()
+
+  const data = Object.assign({}, currentModel.value, {
+    openaiApiKey: openaiApiKey.value,
+    message: message,
+    parentMessageId: parentMessageId,
+    conversationId: currentConversation.value.id
+  })
+
   try {
-    await fetchEventSource('/api/conversation/', {
-      signal: ctrl.signal,
+    const response = await fetch('/api/conversation/', {
       method: 'POST',
       headers: {
         'accept': 'application/json',
@@ -66,14 +74,42 @@ const fetchReply = async (message, parentMessageId) => {
         parentMessageId: parentMessageId,
         conversationId: currentConversation.value.id
       }),
-      async onopen(response) {
+    })
+    const data = await response.json()
+    console.log(data)
+
+    if (currentConversation.value.id === null) {
+      currentConversation.value.id = data.conversationId
+      await genTitle(currentConversation.value.id)
+    }
+    currentConversation.value.messages[currentConversation.value.messages.length - 1].id = data.messageId
+
+
+    messageQueue.push(data.content)
+    processMessageQueue()
+    abortFetch()
+    scrollChatWindow()
+  } catch (err) {
+    console.log(err)
+    abortFetch()
+    showSnackbar(err.message)
+  }
+}
+
+const fetchReplyEventSource = async (message, parentMessageId) => {
+  ctrl = new AbortController()
+  try {
+    await fetchEventSource('/api/conversation/', {
+      signal: ctrl.signal,
+      method: 'POST',
+      headers: {
+        'accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+      onopen(response) {
         if (response.ok && response.headers.get('content-type') === EventStreamContentType) {
           return;
-        }
-        if (response.ok) {
-          // const data = await response.json()
-          // console.log(data);
-          return
         }
         throw new Error(`Failed to send message. HTTP ${response.status} - ${response.statusText}`);
       },
@@ -98,7 +134,7 @@ const fetchReply = async (message, parentMessageId) => {
         if (event === 'done') {
           if (currentConversation.value.id === null) {
             currentConversation.value.id = data.conversationId
-            await genTitle(currentConversation.value.id)
+            genTitle(currentConversation.value.id)
           }
           currentConversation.value.messages[currentConversation.value.messages.length - 1].id = data.messageId
           abortFetch()
@@ -140,6 +176,7 @@ const send = (message) => {
   }
   currentConversation.value.messages.push({parentMessageId: parentMessageId, message: message})
   fetchReply(message, parentMessageId)
+  // fetchReplyEventSource(message, parentMessageId)
   scrollChatWindow()
 }
 const stop = () => {
@@ -158,6 +195,10 @@ const usePrompt = (prompt) => {
   editor.value.usePrompt(prompt)
 }
 
+const deleteMessage = (index) => {
+  currentConversation.value.messages.splice(index, 1)
+}
+
 </script>
 
 <template>
@@ -172,9 +213,14 @@ const usePrompt = (prompt) => {
             cols="12"
         >
           <div
-              class="d-flex"
-              :class="message.is_bot ? 'justify-start mr-16' : 'justify-end ml-16'"
+              class="d-flex align-center"
+              :class="message.is_bot ? 'justify-start' : 'justify-end'"
           >
+            <MessageActions
+                v-if="!message.is_bot"
+                :message="message"
+                :message-index="index"
+            />
             <v-card
                 :color="message.is_bot ? '' : 'primary'"
                 rounded="lg"
@@ -183,18 +229,12 @@ const usePrompt = (prompt) => {
               <v-card-text>
                 <MsgContent :content="message.message" />
               </v-card-text>
-
-<!--              <v-card-actions-->
-<!--                  v-if="message.is_bot"-->
-<!--              >-->
-<!--                <v-spacer></v-spacer>-->
-<!--                <v-tooltip text="Copy">-->
-<!--                  <template v-slot:activator="{ props }">-->
-<!--                    <v-btn v-bind="props" icon="content_copy"></v-btn>-->
-<!--                  </template>-->
-<!--                </v-tooltip>-->
-<!--              </v-card-actions>-->
             </v-card>
+            <MessageActions
+                v-if="message.is_bot"
+                :message="message"
+                :message-index="index"
+            />
           </div>
         </v-col>
       </v-row>
