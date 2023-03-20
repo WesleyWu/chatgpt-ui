@@ -53,13 +53,6 @@ const abortFetch = () => {
 const fetchReply = async (message, parentMessageId) => {
   ctrl = new AbortController()
 
-  const data = Object.assign({}, currentModel.value, {
-    openaiApiKey: openaiApiKey.value,
-    message: message,
-    parentMessageId: parentMessageId,
-    conversationId: currentConversation.value.id
-  })
-
   try {
     const response = await fetch('/api/conversation/', {
       method: 'POST',
@@ -98,6 +91,14 @@ const fetchReply = async (message, parentMessageId) => {
 
 const fetchReplyEventSource = async (message, parentMessageId) => {
   ctrl = new AbortController()
+
+  const data = Object.assign({}, currentModel.value, {
+    openaiApiKey: openaiApiKey.value,
+    message: message,
+    parentMessageId: parentMessageId,
+    conversationId: currentConversation.value.id
+  })
+
   try {
     await fetchEventSource('/api/conversation/', {
       signal: ctrl.signal,
@@ -175,8 +176,8 @@ const send = (message) => {
     }
   }
   currentConversation.value.messages.push({parentMessageId: parentMessageId, message: message})
-  fetchReply(message, parentMessageId)
-  // fetchReplyEventSource(message, parentMessageId)
+  //fetchReply(message, parentMessageId)
+  fetchReplyEventSource(message, parentMessageId)
   scrollChatWindow()
 }
 const stop = () => {
